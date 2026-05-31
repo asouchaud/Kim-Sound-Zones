@@ -11,23 +11,69 @@ This bundles:
   * the local assets/ folder (drop your own .wav files here).
 """
 import os
+import sys
+from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_all
 
+
+def _python_stdlib_dlls() -> list[tuple[str, str]]:
+    """Bundle stdlib .pyd modules and their Conda DLL dependencies.
+
+    Builds from Anaconda/Miniconda often miss companion DLLs (libffi, libbz2,
+    etc.) unless they are copied into ``_internal`` next to the .pyd files.
+    """
+    extra: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    base = Path(getattr(sys, "base_prefix", sys.prefix))
+
+    def add(path: Path, dest: str = ".") -> None:
+        key = path.name.lower()
+        if path.is_file() and key not in seen:
+            seen.add(key)
+            extra.append((str(path), dest))
+
+    if sys.platform == "win32":
+        dlls = base / "DLLs"
+        if dlls.is_dir():
+            for pyd in dlls.glob("*.pyd"):
+                add(pyd)
+        lib_bin = base / "Library" / "bin"
+        if lib_bin.is_dir():
+            for pattern in (
+                "lib*.dll", "ffi*.dll", "zlib*.dll", "bz2*.dll",
+                "libbz2*.dll", "liblzma*.dll", "libexpat*.dll",
+            ):
+                for dll in lib_bin.glob(pattern):
+                    add(dll)
+    elif sys.platform == "darwin":
+        for lib_dir in (base / "lib", Path(sys.prefix) / "lib"):
+            if not lib_dir.is_dir():
+                continue
+            for pattern in ("libffi*.dylib", "libbz2*.dylib", "libz*.dylib"):
+                for dylib in lib_dir.glob(pattern):
+                    add(dylib)
+    return extra
+
+
 datas = []
-binaries = []
+binaries = _python_stdlib_dlls()
 hiddenimports = []
 
 # slab ships the KEMAR HRTF data; pull in everything it (and the HRTF/IO stack)
 # needs. sounddevice/soundfile are handled by their own contrib hooks (they are
 # single modules, not packages, so collect_all is not appropriate for them).
-for pkg in ("slab", "h5netcdf", "h5py"):
+for pkg in ("numpy", "slab", "h5netcdf"):
     d, b, h = collect_all(pkg)
     datas += d
     binaries += b
     hiddenimports += h
 
-hiddenimports += ["sounddevice", "soundfile", "cffi", "_cffi_backend"]
+hiddenimports += [
+    "sounddevice", "soundfile", "cffi", "_cffi_backend",
+    "numpy.core", "numpy.core.multiarray", "numpy.core._multiarray_umath",
+    "numpy.core.umath",
+]
 
 # Ship the "sounds" folder (with its how-to note) next to the executable so the
 # user has an obvious place to drop their own .wav files.
@@ -53,8 +99,8 @@ a = Analysis(
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
-    hooksconfig={},
-    runtime_hooks=[],
+    hooksconfig={"matplotlib": {"backends": ["Agg"]}},
+    runtime_hooks=["rthook_numpy_compat.py", "rthook_dll_path.py"],
     excludes=excludes,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

@@ -68,26 +68,37 @@ engine's 44.1 kHz.
 
 ## Building a standalone executable
 
-PyInstaller is used for packaging. It **cannot cross-compile**, so build on each
-target OS. The same `yebin.spec` works for both and bundles the KEMAR HRTF data,
-PortAudio, and the `assets/` folder.
+PyInstaller packages the game for **Windows** and **macOS**. You must build on each
+OS separately (a Windows build cannot run on Mac, and vice versa). The first build
+takes several minutes.
 
-### Windows
+### Windows (build on a Windows PC)
 
-```bat
-build_windows.bat
-```
+Double-click **`build_windows.bat`** or run it in a terminal from this folder.
 
-Produces `dist\BinauralSoundZones\BinauralSoundZones.exe`.
+Output:
 
-### macOS
+- **`dist\BinauralSoundZones\BinauralSoundZones.exe`** — double-click to play
+- **`dist\BinauralSoundZones\sounds\`** — drop your `.wav` / `.mp3` files here
+
+Copy the whole **`BinauralSoundZones`** folder to another Windows computer to share it.
+
+### macOS (build on a Mac)
 
 ```bash
 chmod +x build_macos.sh
 ./build_macos.sh
 ```
 
-Produces `dist/BinauralSoundZones.app` (launch with `open dist/BinauralSoundZones.app`).
+Output:
+
+- **`dist/BinauralSoundZones.app`** — open with `open dist/BinauralSoundZones.app`
+- Custom sounds: create **`dist/BinauralSoundZones.app/Contents/MacOS/sounds/`** and
+  add your `.wav` / `.mp3` files there (then use **Refresh sounds** in the menu)
+
+Copy **`BinauralSoundZones.app`** to another Mac to share it. If macOS blocks the
+app the first time, right-click the app → **Open**, or allow it in **Privacy &
+Security** settings.
 
 ## Project layout
 

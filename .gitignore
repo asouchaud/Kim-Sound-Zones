@@ -1,0 +1,41 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# PyInstaller
+dist/
+build/
+*.spec.bak
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Build / run logs
+build_log.txt
+exe_stderr.log
+*.log
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Optional: user sound files (keep HOW_TO_ADD_SOUNDS.txt)
+# sounds/*.wav
+# sounds/*.mp3
+# sounds/*.ogg
+# sounds/*.flac
+
+# Test / coverage caches
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
