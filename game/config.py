@@ -36,14 +36,7 @@ PLAYER_SIZE = 14      # half-length of the cross arms in pixels
 
 # ----------------------------------------------------------------------------
 # Setup choices -> numbers
-# These map the friendly words shown in the menu to concrete values.
 # ----------------------------------------------------------------------------
-# Zone size (the shape's radius in pixels).
-SIZE_RADIUS = {"small": 50.0, "medium": 85.0, "large": 130.0}
-# How fast a moving zone travels (pixels per second).
-SPEED_PX = {"still": 0.0, "slow": 60.0, "medium": 120.0, "fast": 210.0}
-# Angular speed for circular motion (radians per second).
-SPEED_ANGULAR = {"still": 0.0, "slow": 0.4, "medium": 0.8, "fast": 1.4}
 # Radius of the circle around the listener (the "hearing range").
 LISTENER_RADIUS = {"small": 70.0, "medium": 120.0, "large": 180.0}
 

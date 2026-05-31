@@ -1,10 +1,12 @@
 """The setup screen shown when the game launches.
 
 Everything is mouse-driven so that someone who has never used a computer game
-(or code) can build their world by clicking:
+(or code) can build their world by clicking and dragging:
 
-  * pick a shape / size / speed / motion / sound with the ``<`` and ``>`` arrows,
-  * click "Add zone" to drop it into the list on the right,
+  * drag the Width / Height / Speed sliders to size and move each oval,
+  * pick a Motion with the arrows,
+  * scroll the Sound list and click the sound you want,
+  * click "Add this zone" to drop it into the list on the right,
   * set how big the listener's hearing circle is,
   * click "Start" to play.
 
@@ -21,9 +23,11 @@ from .config import (COLOR_ACCENT, COLOR_BG, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                      COLOR_BUTTON_TEXT, COLOR_PANEL, COLOR_TEXT, COLOR_TEXT_DIM,
                      FPS, LISTENER_RADIUS, SCREEN_HEIGHT, SCREEN_WIDTH,
                      user_sounds_dir)
-from .setup import MOTIONS, SHAPES, SIZES, SPEEDS, SoundCatalog, ZoneSpec
+from .setup import (HEIGHT_RANGE, MOTIONS, SPEED_RANGE, WIDTH_RANGE,
+                     SoundCatalog, ZoneSpec)
 
 LISTENER_SIZES = ["small", "medium", "large"]
+ROW_H = 26
 
 
 @dataclass
@@ -39,13 +43,18 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
     body_font = fonts["body"]
     small_font = fonts["small"]
 
-    idx = {"shape": 0, "size": 1, "speed": 1, "motion": 1, "sound": 0}
+    vals = {"width": 120.0, "height": 120.0, "speed": 100.0}
+    motion_idx = 1
+    sound_idx = 0
+    sound_scroll = 0
     listener_idx = 1
     specs: list[ZoneSpec] = []
+    drag = {"slider": None}
 
     running = True
     while running:
         clicks: list[tuple[int, int]] = []
+        wheel = 0
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return None
@@ -53,7 +62,14 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
                 return None
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 clicks.append(event.pos)
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                drag["slider"] = None
+            if event.type == pygame.MOUSEWHEEL:
+                wheel += event.y
         mouse = pygame.mouse.get_pos()
+        pressed = pygame.mouse.get_pressed()[0]
+        if not pressed:
+            drag["slider"] = None
 
         def hit(rect: pygame.Rect) -> bool:
             return any(rect.collidepoint(c) for c in clicks)
@@ -83,86 +99,135 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
             text(label, font, tcol, rect.centerx, rect.centery, center=True)
             return enabled and hit(rect)
 
-        def spinner(label, key, options, y):
-            text(label, body_font, COLOR_TEXT_DIM, 60, y + 8)
-            left = pygame.Rect(210, y, 34, 34)
-            box = pygame.Rect(250, y, 170, 34)
-            right = pygame.Rect(426, y, 34, 34)
+        def slider(label, key, y, vmin, vmax, suffix=""):
+            text(label, body_font, COLOR_TEXT_DIM, 60, y)
+            track = pygame.Rect(210, y + 12, 190, 6)
+            grab = pygame.Rect(track.x - 8, y, track.width + 16, 30)
+            for c in clicks:
+                if grab.collidepoint(c):
+                    drag["slider"] = key
+            if drag["slider"] == key and pressed:
+                frac = (mouse[0] - track.x) / track.width
+                frac = max(0.0, min(1.0, frac))
+                vals[key] = vmin + frac * (vmax - vmin)
+            frac = (vals[key] - vmin) / (vmax - vmin)
+            hx = int(track.x + frac * track.width)
+            pygame.draw.rect(screen, (20, 22, 30), track, border_radius=3)
+            pygame.draw.rect(screen, COLOR_ACCENT,
+                             pygame.Rect(track.x, track.y, hx - track.x,
+                                         track.height), border_radius=3)
+            pygame.draw.circle(screen, COLOR_BUTTON_TEXT, (hx, track.y + 3), 8)
+            text(f"{int(vals[key])}{suffix}", small_font, COLOR_TEXT, 412, y + 2)
+
+        def spinner(label, options, index, y, x0=60):
+            text(label, body_font, COLOR_TEXT_DIM, x0, y + 6)
+            left = pygame.Rect(x0 + 150, y, 34, 32)
+            box = pygame.Rect(x0 + 188, y, 150, 32)
+            right = pygame.Rect(x0 + 342, y, 34, 32)
             pygame.draw.rect(screen, (20, 22, 30), box, border_radius=8)
-            text(options[idx[key]], body_font, COLOR_TEXT,
+            text(options[index], body_font, COLOR_TEXT,
                  box.centerx, box.centery, center=True)
             if button(left, "<"):
-                idx[key] = (idx[key] - 1) % len(options)
+                index = (index - 1) % len(options)
             if button(right, ">"):
-                idx[key] = (idx[key] + 1) % len(options)
+                index = (index + 1) % len(options)
+            return index
+
+        def sound_list(rect, names, selected, scroll):
+            visible = rect.height // ROW_H
+            max_scroll = max(0, len(names) - visible)
+            if rect.collidepoint(mouse) and wheel:
+                scroll -= wheel
+            scroll = max(0, min(max_scroll, scroll))
+
+            pygame.draw.rect(screen, (20, 22, 30), rect, border_radius=8)
+            pygame.draw.rect(screen, (60, 66, 86), rect, 1, border_radius=8)
+            for i in range(visible):
+                ni = scroll + i
+                if ni >= len(names):
+                    break
+                row = pygame.Rect(rect.x + 3, rect.y + 3 + i * ROW_H,
+                                  rect.width - 6, ROW_H - 2)
+                if ni == selected:
+                    pygame.draw.rect(screen, COLOR_ACCENT, row, border_radius=5)
+                    tcol = (20, 24, 28)
+                elif row.collidepoint(mouse):
+                    pygame.draw.rect(screen, COLOR_BUTTON_HOVER, row,
+                                     border_radius=5)
+                    tcol = COLOR_BUTTON_TEXT
+                else:
+                    tcol = COLOR_TEXT
+                text(names[ni], body_font, tcol, row.x + 8, row.y + 3)
+                if hit(row):
+                    selected = ni
+
+            # Scroll up / down buttons next to the list.
+            up = pygame.Rect(rect.right + 8, rect.y, 34, 34)
+            down = pygame.Rect(rect.right + 8, rect.bottom - 34, 34, 34)
+            if button(up, "^", enabled=scroll > 0):
+                scroll = max(0, scroll - 1)
+            if button(down, "v", enabled=scroll < max_scroll):
+                scroll = min(max_scroll, scroll + 1)
+            return selected, scroll
 
         screen.fill(COLOR_BG)
 
-        # Panels
         left_panel = pygame.Rect(30, 96, 480, 540)
         right_panel = pygame.Rect(530, 96, 440, 540)
         pygame.draw.rect(screen, COLOR_PANEL, left_panel, border_radius=12)
         pygame.draw.rect(screen, COLOR_PANEL, right_panel, border_radius=12)
 
-        # Header
         text("Binaural Sound Zones", title_font, COLOR_TEXT, SCREEN_WIDTH // 2, 32,
              center=True)
         text("Build your world, then press Start. Use headphones!",
              small_font, COLOR_TEXT_DIM, SCREEN_WIDTH // 2, 66, center=True)
 
         # Left panel: configure a new zone
-        text("Create a sound zone", head_font, COLOR_ACCENT, 60, 110)
+        text("Create a sound zone (oval)", head_font, COLOR_ACCENT, 60, 108)
         sound_names = catalog.names()
-        if idx["sound"] >= len(sound_names):
-            idx["sound"] = 0
-        spinner("Shape", "shape", SHAPES, 158)
-        spinner("Size", "size", SIZES, 200)
-        spinner("Speed", "speed", SPEEDS, 242)
-        spinner("Motion", "motion", MOTIONS, 284)
-        spinner("Sound", "sound", sound_names, 326)
+        if sound_idx >= len(sound_names):
+            sound_idx = 0
 
-        if button(pygame.Rect(60, 380, 400, 44), "Add this zone", accent=True):
+        slider("Width", "width", 146, *WIDTH_RANGE, suffix=" px")
+        slider("Height", "height", 184, *HEIGHT_RANGE, suffix=" px")
+        slider("Speed", "speed", 222, *SPEED_RANGE, suffix=" px/s")
+        motion_idx = spinner("Motion", MOTIONS, motion_idx, 260)
+
+        text("Sound (scroll & click)", body_font, COLOR_TEXT_DIM, 60, 300)
+        sound_idx, sound_scroll = sound_list(
+            pygame.Rect(60, 324, 384, 130), sound_names, sound_idx, sound_scroll)
+
+        if button(pygame.Rect(60, 466, 388, 40), "Add this zone", accent=True):
             specs.append(ZoneSpec(
-                shape=SHAPES[idx["shape"]],
-                size=SIZES[idx["size"]],
-                speed=SPEEDS[idx["speed"]],
-                motion=MOTIONS[idx["motion"]],
-                sound=sound_names[idx["sound"]],
+                width=round(vals["width"]),
+                height=round(vals["height"]),
+                speed=round(vals["speed"]),
+                motion=MOTIONS[motion_idx],
+                sound=sound_names[sound_idx],
             ))
 
-        if button(pygame.Rect(60, 432, 195, 36), "Refresh sounds"):
+        if button(pygame.Rect(60, 514, 180, 32), "Refresh sounds"):
             catalog.refresh()
-        text(f"Your .wav folder: {user_sounds_dir()}", small_font,
-             COLOR_TEXT_DIM, 60, 478)
-        text("(drop .wav files there, then Refresh)", small_font,
-             COLOR_TEXT_DIM, 60, 498)
+        text(f"Sounds folder: {user_sounds_dir()}", small_font,
+             COLOR_TEXT_DIM, 60, 556)
+        text("(drop .wav or .mp3 files there, then Refresh)", small_font,
+             COLOR_TEXT_DIM, 60, 574)
 
-        # Listener size
-        text("Listener hearing range", head_font, COLOR_ACCENT, 60, 540)
-        text("Size", body_font, COLOR_TEXT_DIM, 60, 586)
-        l_left = pygame.Rect(210, 578, 34, 34)
-        l_box = pygame.Rect(250, 578, 170, 34)
-        l_right = pygame.Rect(426, 578, 34, 34)
-        pygame.draw.rect(screen, (20, 22, 30), l_box, border_radius=8)
-        text(LISTENER_SIZES[listener_idx], body_font, COLOR_TEXT,
-             l_box.centerx, l_box.centery, center=True)
-        if button(l_left, "<"):
-            listener_idx = (listener_idx - 1) % len(LISTENER_SIZES)
-        if button(l_right, ">"):
-            listener_idx = (listener_idx + 1) % len(LISTENER_SIZES)
+        # Right panel: listener size + the list of added zones
+        text("Listener hearing range", head_font, COLOR_ACCENT, 560, 108)
+        listener_idx = spinner("Size", LISTENER_SIZES, listener_idx, 138, x0=560)
 
-        # Right panel: list of added zones
-        text(f"Your zones ({len(specs)})", head_font, COLOR_ACCENT, 560, 110)
+        text(f"Your zones ({len(specs)})", head_font, COLOR_ACCENT, 560, 190)
         if not specs:
-            text("No zones yet.", body_font, COLOR_TEXT_DIM, 560, 156)
-            text("Pick options on the left and", small_font, COLOR_TEXT_DIM,
-                 560, 188)
-            text("click \"Add this zone\".", small_font, COLOR_TEXT_DIM, 560, 208)
+            text("No zones yet. Set the options", small_font, COLOR_TEXT_DIM,
+                 560, 230)
+            text("on the left and click", small_font, COLOR_TEXT_DIM, 560, 250)
+            text("\"Add this zone\".", small_font, COLOR_TEXT_DIM, 560, 270)
         else:
-            y = 152
-            for i, spec in enumerate(specs[-12:], start=1):
+            y = 226
+            for i, spec in enumerate(specs[-11:], start=1):
                 text(f"{i}. {spec.summary()}", small_font, COLOR_TEXT, 560, y)
-                y += 30
+                y += 28
 
         remove_enabled = len(specs) > 0
         if button(pygame.Rect(560, 540, 180, 38), "Remove last",

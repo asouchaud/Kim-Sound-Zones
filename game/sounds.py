@@ -73,20 +73,30 @@ def chirp(f0: float = 200.0, f1: float = 1200.0, duration: float = 1.5,
     return _normalize(sweep[:n])
 
 
-def load_wav(path: str, sr: int = SAMPLE_RATE) -> np.ndarray:
-    """Load a ``.wav`` file as mono float32 resampled to the engine rate.
+# Audio file extensions the game can load (decoded via libsndfile/soundfile).
+SUPPORTED_EXTENSIONS = (".wav", ".mp3")
 
-    Stereo (and multi-channel) files are averaged down to mono. Integer PCM
-    formats are scaled to [-1, 1].
+
+def load_audio(path: str, sr: int = SAMPLE_RATE) -> np.ndarray:
+    """Load a ``.wav`` or ``.mp3`` file as mono float32 at the engine rate.
+
+    Uses ``soundfile`` (libsndfile), which handles WAV and MP3. Stereo (and
+    multi-channel) files are averaged to mono, and any sample rate is converted.
+    Falls back to scipy's WAV reader if soundfile is unavailable.
     """
-    file_sr, data = wavfile.read(path)
-    data = np.asarray(data)
+    try:
+        import soundfile as sf
 
-    if data.dtype.kind in "iu":
-        max_val = float(np.iinfo(data.dtype).max)
-        data = data.astype(np.float32) / max_val
-    else:
-        data = data.astype(np.float32)
+        data, file_sr = sf.read(path, dtype="float32", always_2d=False)
+        data = np.asarray(data, dtype=np.float32)
+    except Exception:
+        # Fallback: scipy WAV reader (does not support MP3).
+        file_sr, raw = wavfile.read(path)
+        raw = np.asarray(raw)
+        if raw.dtype.kind in "iu":
+            data = raw.astype(np.float32) / float(np.iinfo(raw.dtype).max)
+        else:
+            data = raw.astype(np.float32)
 
     if data.ndim > 1:
         data = data.mean(axis=1)
@@ -98,16 +108,26 @@ def load_wav(path: str, sr: int = SAMPLE_RATE) -> np.ndarray:
     return _normalize(data, peak=0.95)
 
 
-def list_user_wavs(folder: str) -> list[tuple[str, str]]:
-    """Return ``(display_name, full_path)`` for every .wav file in ``folder``.
+# Backwards-compatible alias.
+load_wav = load_audio
 
-    Sorted alphabetically. The display name is the file name without the
-    extension, so a non-technical user just sees e.g. "birds" for "birds.wav".
+
+def list_user_sounds(folder: str) -> list[tuple[str, str]]:
+    """Return ``(display_name, full_path)`` for every supported audio file.
+
+    Scans ``folder`` for .wav and .mp3 files, sorted alphabetically. The display
+    name is the file name without the extension, so a non-technical user just
+    sees e.g. "birds" for "birds.mp3".
     """
     if not folder or not os.path.isdir(folder):
         return []
     results = []
-    for path in sorted(glob.glob(os.path.join(folder, "*.wav"))):
-        name = os.path.splitext(os.path.basename(path))[0]
-        results.append((name, path))
-    return results
+    for ext in SUPPORTED_EXTENSIONS:
+        for path in glob.glob(os.path.join(folder, f"*{ext}")):
+            name = os.path.splitext(os.path.basename(path))[0]
+            results.append((name, path))
+    return sorted(results, key=lambda item: item[0].lower())
+
+
+# Backwards-compatible alias.
+list_user_wavs = list_user_sounds

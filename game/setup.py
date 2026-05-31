@@ -15,31 +15,35 @@ import random
 from dataclasses import dataclass
 
 from . import sounds
-from .config import (SIZE_RADIUS, SPEED_ANGULAR, SPEED_PX, user_sounds_dir)
-from .sound_zone import SoundZone, regular_polygon
+from .config import user_sounds_dir
+from .sound_zone import SoundZone
 from .trajectories import Circular, LinearBounce, RandomWalk, Static
 
-# The friendly option lists shown in the menu (order matters for display).
-SHAPES = ["circle", "square", "triangle", "hexagon"]
-SIZES = ["small", "medium", "large"]
-SPEEDS = ["still", "slow", "medium", "fast"]
+# The friendly option list shown in the menu (order matters for display).
 MOTIONS = ["static", "bounce", "circular", "wander"]
+
+# Slider ranges (pixels). Width/height are the full diameters of the oval.
+WIDTH_RANGE = (40.0, 280.0)
+HEIGHT_RANGE = (40.0, 280.0)
+SPEED_RANGE = (0.0, 260.0)  # pixels per second
 
 
 @dataclass
 class ZoneSpec:
-    shape: str = "circle"
-    size: str = "medium"
-    speed: str = "slow"
+    width: float = 120.0
+    height: float = 120.0
+    speed: float = 100.0
     motion: str = "bounce"
     sound: str = "Tone 220 Hz"
 
     def summary(self) -> str:
+        shape = "circle" if abs(self.width - self.height) < 6 else "oval"
+        dims = f"{int(self.width)}x{int(self.height)}"
         if self.motion == "static":
             motion = "still"
         else:
-            motion = f"{self.motion} ({self.speed})"
-        return f"{self.size} {self.shape}, {motion} - {self.sound}"
+            motion = f"{self.motion} ({int(self.speed)})"
+        return f"{shape} {dims}, {motion} - {self.sound}"
 
 
 class SoundCatalog:
@@ -57,9 +61,9 @@ class SoundCatalog:
         self.refresh()
 
     def refresh(self) -> None:
-        """Re-scan the user's sounds folder for .wav files."""
+        """Re-scan the user's sounds folder for .wav and .mp3 files."""
         self._wavs = {}
-        for name, path in sounds.list_user_wavs(user_sounds_dir()):
+        for name, path in sounds.list_user_sounds(user_sounds_dir()):
             label = name
             # Avoid clashing with a built-in name.
             while label in self._builtins or label in self._wavs:
@@ -74,7 +78,7 @@ class SoundCatalog:
         if name in self._builtins:
             return self._builtins[name]()
         if name in self._wavs:
-            return sounds.load_wav(self._wavs[name])
+            return sounds.load_audio(self._wavs[name])
         # Fallback if a previously-chosen file disappeared.
         return sounds.tone(330.0)
 
@@ -83,13 +87,12 @@ def build_zone_from_spec(zone_id: int, spec: ZoneSpec, catalog: SoundCatalog,
                          bounds: tuple[int, int]) -> SoundZone:
     w, h = bounds
     margin = 60.0
-    radius = SIZE_RADIUS.get(spec.size, 85.0)
     sound = catalog.render(spec.sound)
 
     start_x = random.uniform(margin, w - margin)
     start_y = random.uniform(margin, h - margin)
 
-    speed = SPEED_PX.get(spec.speed, 0.0)
+    speed = float(spec.speed)
     if spec.motion == "static" or speed == 0.0:
         trajectory = Static(start_x, start_y)
     elif spec.motion == "bounce":
@@ -99,24 +102,12 @@ def build_zone_from_spec(zone_id: int, spec: ZoneSpec, catalog: SoundCatalog,
                                   math.sin(angle) * speed, margin=margin)
     elif spec.motion == "circular":
         orbit = min(w, h) * 0.32
-        cx = w * 0.5
-        cy = h * 0.5
-        ang = SPEED_ANGULAR.get(spec.speed, 0.8)
-        trajectory = Circular(cx, cy, orbit, angular_speed=ang,
+        # Convert linear speed (px/s) to angular speed (rad/s) for this orbit.
+        ang = speed / orbit if orbit > 0 else 0.0
+        trajectory = Circular(w * 0.5, h * 0.5, orbit, angular_speed=ang,
                               phase=random.uniform(0, 2 * math.pi))
     else:  # wander
         trajectory = RandomWalk(start_x, start_y, speed=speed, margin=margin)
 
-    shape, kwargs = _shape_kwargs(spec.shape, radius)
-    return SoundZone(zone_id, sound, shape=shape, trajectory=trajectory,
-                     label=spec.sound, **kwargs)
-
-
-def _shape_kwargs(shape: str, radius: float) -> tuple[str, dict]:
-    if shape == "square":
-        return "rect", {"width": radius * 2, "height": radius * 2}
-    if shape == "triangle":
-        return "polygon", {"polygon": regular_polygon(3, radius), "radius": radius}
-    if shape == "hexagon":
-        return "polygon", {"polygon": regular_polygon(6, radius), "radius": radius}
-    return "circle", {"radius": radius}
+    return SoundZone(zone_id, sound, shape="ellipse", trajectory=trajectory,
+                     width=spec.width, height=spec.height, label=spec.sound)

@@ -88,6 +88,8 @@ class SoundZone:
     def _bounding_radius(self) -> float:
         if self.shape == "circle":
             return self.radius
+        if self.shape == "ellipse":
+            return max(self.width, self.height) / 2
         if self.shape == "rect":
             return 0.5 * math.hypot(self.width, self.height)
         return max(math.hypot(dx, dy) for dx, dy in self.polygon)
@@ -97,6 +99,10 @@ class SoundZone:
         dx, dy = px - self.x, py - self.y
         if self.shape == "circle":
             return dx * dx + dy * dy <= self.radius * self.radius
+        if self.shape == "ellipse":
+            rx = max(1.0, self.width / 2)
+            ry = max(1.0, self.height / 2)
+            return (dx / rx) ** 2 + (dy / ry) ** 2 <= 1.0
         if self.shape == "rect":
             return abs(dx) <= self.width / 2 and abs(dy) <= self.height / 2
         return self._point_in_polygon(dx, dy)
@@ -131,6 +137,18 @@ class SoundZone:
             return 0.0
         if self.shape == "circle":
             return math.hypot(px - self.x, py - self.y) - self.radius
+        if self.shape == "ellipse":
+            # Radial approximation: distance along the ray from the centre to
+            # the point, minus where that ray crosses the ellipse boundary.
+            dx, dy = px - self.x, py - self.y
+            d = math.hypot(dx, dy)
+            if d == 0.0:
+                return 0.0
+            rx = max(1.0, self.width / 2)
+            ry = max(1.0, self.height / 2)
+            ux, uy = dx / d, dy / d
+            boundary = 1.0 / math.sqrt((ux / rx) ** 2 + (uy / ry) ** 2)
+            return max(0.0, d - boundary)
         if self.shape == "rect":
             dx = max(abs(px - self.x) - self.width / 2, 0.0)
             dy = max(abs(py - self.y) - self.height / 2, 0.0)
@@ -201,6 +219,10 @@ class SoundZone:
         cx, cy = int(self.x), int(self.y)
         if self.shape == "circle":
             pygame.draw.circle(surface, color, (cx, cy), int(self.radius), 2)
+        elif self.shape == "ellipse":
+            rect = pygame.Rect(0, 0, max(2, int(self.width)), max(2, int(self.height)))
+            rect.center = (cx, cy)
+            pygame.draw.ellipse(surface, color, rect, 2)
         elif self.shape == "rect":
             rect = pygame.Rect(0, 0, int(self.width), int(self.height))
             rect.center = (cx, cy)

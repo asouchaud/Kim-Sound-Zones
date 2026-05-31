@@ -12,9 +12,10 @@ from the direction of the zone's centre relative to you.
 ## How to play
 
 1. Launch the game. You start on a **setup menu**.
-2. On the left, use the `<` / `>` arrows to choose a zone's **shape, size,
-   speed, motion and sound**, then click **"Add this zone"**. Add as many as you
-   like - they appear in the list on the right.
+2. On the left, drag the **Width**, **Height** and **Speed** sliders to shape an
+   oval (equal width and height makes a circle), pick a **Motion** and a
+   **Sound** with the `<` / `>` arrows, then click **"Add this zone"**. Add as
+   many as you like - they appear in the list on the right.
 3. Set the **listener hearing range** (how big your hearing circle is).
 4. Click **Start**.
 5. Move the cross with **WASD / arrow keys**. When your hearing circle overlaps
@@ -29,9 +30,9 @@ from the direction of the zone's centre relative to you.
 - **Player** (`game/player.py`): a cross with a fixed "up" heading and a
   *listener zone* (a circle around it). A sound plays only while its zone
   overlaps this circle.
-- **Sound zones** (`game/sound_zone.py`): each has a shape (circle, square,
-  triangle, hexagon), a size, a mono sound, and a movement `Trajectory`
-  (`game/trajectories.py`: static, bouncing, circular, wander).
+- **Sound zones** (`game/sound_zone.py`): each is an oval (a circle when width
+  equals height) with its own width, height, a mono sound, and a movement
+  `Trajectory` (`game/trajectories.py`: static, bouncing, circular, wander).
 - **Setup** (`game/setup.py`, `game/menu.py`): the menu produces simple
   `ZoneSpec` descriptions; `build_zone_from_spec` turns them into live zones,
   and `SoundCatalog` lists the built-in sounds plus your own `.wav` files.
@@ -56,13 +57,14 @@ dataset is read.
 ## Using your own sounds
 
 Built-in sounds (tones, pink noise, a chirp) are always available. To add your
-own, just drop `.wav` files into the **`sounds/`** folder next to the game (the
-folder contains a `HOW_TO_ADD_SOUNDS.txt` reminder). On the menu, click
+own, just drop `.wav` or `.mp3` files into the **`sounds/`** folder next to the
+game (the folder contains a `HOW_TO_ADD_SOUNDS.txt` reminder). On the menu, click
 **"Refresh sounds"** (or restart) and your files appear in the **Sound** option,
 listed by their file name.
 
-`.wav` is the supported format. Stereo files are mixed to mono and any sample
-rate is converted automatically to the engine's 44.1 kHz.
+`.wav` and `.mp3` are supported (decoded via `soundfile`/libsndfile). Stereo
+files are mixed to mono and any sample rate is converted automatically to the
+engine's 44.1 kHz.
 
 ## Building a standalone executable
 
