@@ -50,6 +50,7 @@ class SoundZone:
     def __init__(self, zone_id: int, sound: np.ndarray, shape: str = "circle",
                  trajectory: Trajectory | None = None, *,
                  radius: float = 80.0, width: float = 160.0, height: float = 110.0,
+                 angle: float = 0.0,
                  polygon: list[tuple[float, float]] | None = None,
                  label: str = ""):
         self.id = zone_id
@@ -60,6 +61,7 @@ class SoundZone:
         self.radius = float(radius)
         self.width = float(width)
         self.height = float(height)
+        self.angle = float(angle)  # ellipse rotation in degrees
         self.polygon = polygon or regular_polygon(6, radius)
 
         self.trajectory = trajectory or Static(0.0, 0.0)
@@ -85,6 +87,19 @@ class SoundZone:
     def update(self, dt: float, bounds: tuple[int, int]) -> None:
         self.x, self.y = self.trajectory.update(dt, bounds)
 
+    def _to_local(self, px: float, py: float) -> tuple[float, float]:
+        """Point relative to centre, rotated into the ellipse's own frame.
+
+        Uses the inverse of the rotation applied when drawing, so the audible
+        region always matches the oval you see on screen.
+        """
+        dx, dy = px - self.x, py - self.y
+        if not self.angle:
+            return dx, dy
+        a = math.radians(self.angle)
+        ca, sa = math.cos(a), math.sin(a)
+        return dx * ca + dy * sa, -dx * sa + dy * ca
+
     def _bounding_radius(self) -> float:
         if self.shape == "circle":
             return self.radius
@@ -102,7 +117,8 @@ class SoundZone:
         if self.shape == "ellipse":
             rx = max(1.0, self.width / 2)
             ry = max(1.0, self.height / 2)
-            return (dx / rx) ** 2 + (dy / ry) ** 2 <= 1.0
+            lx, ly = self._to_local(px, py)
+            return (lx / rx) ** 2 + (ly / ry) ** 2 <= 1.0
         if self.shape == "rect":
             return abs(dx) <= self.width / 2 and abs(dy) <= self.height / 2
         return self._point_in_polygon(dx, dy)
@@ -138,15 +154,15 @@ class SoundZone:
         if self.shape == "circle":
             return math.hypot(px - self.x, py - self.y) - self.radius
         if self.shape == "ellipse":
-            # Radial approximation: distance along the ray from the centre to
-            # the point, minus where that ray crosses the ellipse boundary.
-            dx, dy = px - self.x, py - self.y
-            d = math.hypot(dx, dy)
+            # Radial approximation in the ellipse's own (rotated) frame. Rotation
+            # is rigid, so the local distance equals the true world distance.
+            lx, ly = self._to_local(px, py)
+            d = math.hypot(lx, ly)
             if d == 0.0:
                 return 0.0
             rx = max(1.0, self.width / 2)
             ry = max(1.0, self.height / 2)
-            ux, uy = dx / d, dy / d
+            ux, uy = lx / d, ly / d
             boundary = 1.0 / math.sqrt((ux / rx) ** 2 + (uy / ry) ** 2)
             return max(0.0, d - boundary)
         if self.shape == "rect":
@@ -220,9 +236,17 @@ class SoundZone:
         if self.shape == "circle":
             pygame.draw.circle(surface, color, (cx, cy), int(self.radius), 2)
         elif self.shape == "ellipse":
-            rect = pygame.Rect(0, 0, max(2, int(self.width)), max(2, int(self.height)))
-            rect.center = (cx, cy)
-            pygame.draw.ellipse(surface, color, rect, 2)
+            rx = max(1.0, self.width / 2)
+            ry = max(1.0, self.height / 2)
+            a = math.radians(self.angle)
+            ca, sa = math.cos(a), math.sin(a)
+            pts = []
+            steps = 48
+            for i in range(steps):
+                t = 2 * math.pi * i / steps
+                ex, ey = rx * math.cos(t), ry * math.sin(t)
+                pts.append((cx + ex * ca - ey * sa, cy + ex * sa + ey * ca))
+            pygame.draw.polygon(surface, color, pts, 2)
         elif self.shape == "rect":
             rect = pygame.Rect(0, 0, int(self.width), int(self.height))
             rect.center = (cx, cy)

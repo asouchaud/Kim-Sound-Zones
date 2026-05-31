@@ -26,12 +26,14 @@ MOTIONS = ["static", "bounce", "circular", "wander"]
 WIDTH_RANGE = (40.0, 280.0)
 HEIGHT_RANGE = (40.0, 280.0)
 SPEED_RANGE = (0.0, 260.0)  # pixels per second
+ROTATION_RANGE = (0.0, 180.0)  # degrees (an ellipse repeats every 180 deg)
 
 
 @dataclass
 class ZoneSpec:
     width: float = 120.0
     height: float = 120.0
+    angle: float = 0.0
     speed: float = 100.0
     motion: str = "bounce"
     sound: str = "Tone 220 Hz"
@@ -39,11 +41,12 @@ class ZoneSpec:
     def summary(self) -> str:
         shape = "circle" if abs(self.width - self.height) < 6 else "oval"
         dims = f"{int(self.width)}x{int(self.height)}"
+        rot = "" if (shape == "circle" or not self.angle) else f" @{int(self.angle)}deg"
         if self.motion == "static":
             motion = "still"
         else:
             motion = f"{self.motion} ({int(self.speed)})"
-        return f"{shape} {dims}, {motion} - {self.sound}"
+        return f"{shape} {dims}{rot}, {motion} - {self.sound}"
 
 
 class SoundCatalog:
@@ -110,4 +113,5 @@ def build_zone_from_spec(zone_id: int, spec: ZoneSpec, catalog: SoundCatalog,
         trajectory = RandomWalk(start_x, start_y, speed=speed, margin=margin)
 
     return SoundZone(zone_id, sound, shape="ellipse", trajectory=trajectory,
-                     width=spec.width, height=spec.height, label=spec.sound)
+                     width=spec.width, height=spec.height, angle=spec.angle,
+                     label=spec.sound)

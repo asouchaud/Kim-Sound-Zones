@@ -23,8 +23,8 @@ from .config import (COLOR_ACCENT, COLOR_BG, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                      COLOR_BUTTON_TEXT, COLOR_PANEL, COLOR_TEXT, COLOR_TEXT_DIM,
                      FPS, LISTENER_RADIUS, SCREEN_HEIGHT, SCREEN_WIDTH,
                      user_sounds_dir)
-from .setup import (HEIGHT_RANGE, MOTIONS, SPEED_RANGE, WIDTH_RANGE,
-                     SoundCatalog, ZoneSpec)
+from .setup import (HEIGHT_RANGE, MOTIONS, ROTATION_RANGE, SPEED_RANGE,
+                     WIDTH_RANGE, SoundCatalog, ZoneSpec)
 
 LISTENER_SIZES = ["small", "medium", "large"]
 ROW_H = 26
@@ -43,7 +43,7 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
     body_font = fonts["body"]
     small_font = fonts["small"]
 
-    vals = {"width": 120.0, "height": 120.0, "speed": 100.0}
+    vals = {"width": 120.0, "height": 120.0, "rotation": 0.0, "speed": 100.0}
     motion_idx = 1
     sound_idx = 0
     sound_scroll = 0
@@ -183,35 +183,37 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
              small_font, COLOR_TEXT_DIM, SCREEN_WIDTH // 2, 66, center=True)
 
         # Left panel: configure a new zone
-        text("Create a sound zone (oval)", head_font, COLOR_ACCENT, 60, 108)
+        text("Create a sound zone (oval)", head_font, COLOR_ACCENT, 60, 106)
         sound_names = catalog.names()
         if sound_idx >= len(sound_names):
             sound_idx = 0
 
-        slider("Width", "width", 146, *WIDTH_RANGE, suffix=" px")
-        slider("Height", "height", 184, *HEIGHT_RANGE, suffix=" px")
-        slider("Speed", "speed", 222, *SPEED_RANGE, suffix=" px/s")
-        motion_idx = spinner("Motion", MOTIONS, motion_idx, 260)
+        slider("Width", "width", 138, *WIDTH_RANGE, suffix=" px")
+        slider("Height", "height", 170, *HEIGHT_RANGE, suffix=" px")
+        slider("Rotation", "rotation", 202, *ROTATION_RANGE, suffix=" deg")
+        slider("Speed", "speed", 234, *SPEED_RANGE, suffix=" px/s")
+        motion_idx = spinner("Motion", MOTIONS, motion_idx, 266)
 
-        text("Sound (scroll & click)", body_font, COLOR_TEXT_DIM, 60, 300)
+        text("Sound (scroll & click)", body_font, COLOR_TEXT_DIM, 60, 304)
         sound_idx, sound_scroll = sound_list(
-            pygame.Rect(60, 324, 384, 130), sound_names, sound_idx, sound_scroll)
+            pygame.Rect(60, 326, 384, 132), sound_names, sound_idx, sound_scroll)
 
-        if button(pygame.Rect(60, 466, 388, 40), "Add this zone", accent=True):
+        if button(pygame.Rect(60, 464, 388, 40), "Add this zone", accent=True):
             specs.append(ZoneSpec(
                 width=round(vals["width"]),
                 height=round(vals["height"]),
+                angle=round(vals["rotation"]),
                 speed=round(vals["speed"]),
                 motion=MOTIONS[motion_idx],
                 sound=sound_names[sound_idx],
             ))
 
-        if button(pygame.Rect(60, 514, 180, 32), "Refresh sounds"):
+        if button(pygame.Rect(60, 512, 180, 30), "Refresh sounds"):
             catalog.refresh()
         text(f"Sounds folder: {user_sounds_dir()}", small_font,
-             COLOR_TEXT_DIM, 60, 556)
+             COLOR_TEXT_DIM, 60, 550)
         text("(drop .wav or .mp3 files there, then Refresh)", small_font,
-             COLOR_TEXT_DIM, 60, 574)
+             COLOR_TEXT_DIM, 60, 568)
 
         # Right panel: listener size + the list of added zones
         text("Listener hearing range", head_font, COLOR_ACCENT, 560, 108)
