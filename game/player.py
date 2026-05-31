@@ -1,10 +1,31 @@
 """The player character: a cross that walks around the 2D world."""
 from __future__ import annotations
 
+import math
+
 import pygame
 
-from .config import (COLOR_LISTENER, COLOR_PLAYER, PLAYER_SIZE, PLAYER_SPEED,
-                     SCREEN_HEIGHT, SCREEN_WIDTH)
+from .config import (COLOR_LISTENER, COLOR_LISTENER_OUTLINE, COLOR_PLAYER,
+                     PLAYER_SIZE, PLAYER_SPEED, SCREEN_HEIGHT, SCREEN_WIDTH)
+
+
+def _draw_dashed_circle(surface: pygame.Surface, cx: int, cy: int, radius: int,
+                        color: tuple[int, int, int], width: int = 1,
+                        dash_px: float = 10.0, gap_px: float = 8.0) -> None:
+    """Draw a dashed circle outline."""
+    if radius <= 0:
+        return
+    step = (dash_px + gap_px) / radius
+    dash_angle = dash_px / radius
+    angle = 0.0
+    while angle < 2 * math.pi:
+        x0 = cx + radius * math.cos(angle)
+        y0 = cy + radius * math.sin(angle)
+        a1 = min(angle + dash_angle, 2 * math.pi)
+        x1 = cx + radius * math.cos(a1)
+        y1 = cy + radius * math.sin(a1)
+        pygame.draw.line(surface, color, (x0, y0), (x1, y1), width)
+        angle += step
 
 
 class Player:
@@ -62,7 +83,7 @@ class Player:
             halo = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
             pygame.draw.circle(halo, (*COLOR_LISTENER, 28), (r, r), r)
             surface.blit(halo, (cx - r, cy - r))
-            pygame.draw.circle(surface, COLOR_LISTENER, (cx, cy), r, 1)
+            _draw_dashed_circle(surface, cx, cy, r, COLOR_LISTENER_OUTLINE, width=1)
 
         s = PLAYER_SIZE
         pygame.draw.line(surface, COLOR_PLAYER, (cx - s, cy), (cx + s, cy), 3)

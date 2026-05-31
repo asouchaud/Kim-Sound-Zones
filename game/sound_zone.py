@@ -17,7 +17,7 @@ import math
 import numpy as np
 import pygame
 
-from .config import COLOR_ZONE_ACTIVE, COLOR_ZONE_IDLE
+from .config import COLOR_ZONE_OUTLINE
 from .trajectories import Static, Trajectory
 
 
@@ -230,8 +230,8 @@ class SoundZone:
     # ------------------------------------------------------------------
     # Rendering (game thread)
     # ------------------------------------------------------------------
-    def draw(self, surface: pygame.Surface, font: pygame.font.Font | None = None) -> None:
-        color = COLOR_ZONE_ACTIVE if self.active else COLOR_ZONE_IDLE
+    def draw(self, surface: pygame.Surface) -> None:
+        color = COLOR_ZONE_OUTLINE
         cx, cy = int(self.x), int(self.y)
         if self.shape == "circle":
             pygame.draw.circle(surface, color, (cx, cy), int(self.radius), 2)
@@ -256,6 +256,3 @@ class SoundZone:
             pygame.draw.polygon(surface, color, pts, 2)
 
         pygame.draw.circle(surface, color, (cx, cy), 3)
-        if font and self.label:
-            text = font.render(self.label, True, color)
-            surface.blit(text, (cx - text.get_width() // 2, cy - 6))

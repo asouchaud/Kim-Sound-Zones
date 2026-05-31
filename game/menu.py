@@ -28,6 +28,8 @@ from .setup import (HEIGHT_RANGE, MOTIONS, ROTATION_RANGE, SPEED_RANGE,
 
 LISTENER_SIZES = ["small", "medium", "large"]
 ROW_H = 26
+LEFT_COL_X = 60
+LEFT_COL_TEXT_W = 430  # keep text inside the left panel (x 30..510)
 
 
 @dataclass
@@ -84,10 +86,27 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
             screen.blit(surf, rect)
             return rect
 
+        def wrap_text(s, font, color, x, y, max_width) -> int:
+            """Draw word-wrapped text; return the y position below the last line."""
+            line = ""
+            for ch in s:
+                trial = line + ch
+                if font.size(trial)[0] <= max_width:
+                    line = trial
+                else:
+                    if line:
+                        text(line, font, color, x, y)
+                        y += font.get_linesize() + 1
+                    line = ch
+            if line:
+                text(line, font, color, x, y)
+                y += font.get_linesize() + 1
+            return y
+
         def button(rect, label, enabled=True, accent=False, font=body_font):
             hover = rect.collidepoint(mouse) and enabled
             if not enabled:
-                color = (40, 42, 52)
+                color = (210, 208, 203)
             elif accent:
                 color = (110, 220, 180) if hover else COLOR_ACCENT
             else:
@@ -100,7 +119,7 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
             return enabled and hit(rect)
 
         def slider(label, key, y, vmin, vmax, suffix=""):
-            text(label, body_font, COLOR_TEXT_DIM, 60, y)
+            text(label, body_font, COLOR_TEXT_DIM, LEFT_COL_X, y)
             track = pygame.Rect(210, y + 12, 190, 6)
             grab = pygame.Rect(track.x - 8, y, track.width + 16, 30)
             for c in clicks:
@@ -112,7 +131,7 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
                 vals[key] = vmin + frac * (vmax - vmin)
             frac = (vals[key] - vmin) / (vmax - vmin)
             hx = int(track.x + frac * track.width)
-            pygame.draw.rect(screen, (20, 22, 30), track, border_radius=3)
+            pygame.draw.rect(screen, (210, 208, 203), track, border_radius=3)
             pygame.draw.rect(screen, COLOR_ACCENT,
                              pygame.Rect(track.x, track.y, hx - track.x,
                                          track.height), border_radius=3)
@@ -124,7 +143,7 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
             left = pygame.Rect(x0 + 150, y, 34, 32)
             box = pygame.Rect(x0 + 188, y, 150, 32)
             right = pygame.Rect(x0 + 342, y, 34, 32)
-            pygame.draw.rect(screen, (20, 22, 30), box, border_radius=8)
+            pygame.draw.rect(screen, (225, 223, 218), box, border_radius=8)
             text(options[index], body_font, COLOR_TEXT,
                  box.centerx, box.centery, center=True)
             if button(left, "<"):
@@ -140,8 +159,8 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
                 scroll -= wheel
             scroll = max(0, min(max_scroll, scroll))
 
-            pygame.draw.rect(screen, (20, 22, 30), rect, border_radius=8)
-            pygame.draw.rect(screen, (60, 66, 86), rect, 1, border_radius=8)
+            pygame.draw.rect(screen, (225, 223, 218), rect, border_radius=8)
+            pygame.draw.rect(screen, (180, 178, 172), rect, 1, border_radius=8)
             for i in range(visible):
                 ni = scroll + i
                 if ni >= len(names):
@@ -182,23 +201,42 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
         text("Build your world, then press Start. Use headphones!",
              small_font, COLOR_TEXT_DIM, SCREEN_WIDTH // 2, 66, center=True)
 
-        # Left panel: configure a new zone
-        text("Create a sound zone (oval)", head_font, COLOR_ACCENT, 60, 106)
+        # Left panel (first column): folder info, then zone controls
+        text("Create a sound zone (oval)", head_font, COLOR_ACCENT, LEFT_COL_X, 106)
         sound_names = catalog.names()
         if sound_idx >= len(sound_names):
             sound_idx = 0
 
-        slider("Width", "width", 138, *WIDTH_RANGE, suffix=" px")
-        slider("Height", "height", 170, *HEIGHT_RANGE, suffix=" px")
-        slider("Rotation", "rotation", 202, *ROTATION_RANGE, suffix=" deg")
-        slider("Speed", "speed", 234, *SPEED_RANGE, suffix=" px/s")
-        motion_idx = spinner("Motion", MOTIONS, motion_idx, 266)
+        y = 136
+        text("Sounds folder", body_font, COLOR_TEXT_DIM, LEFT_COL_X, y)
+        y += 22
+        y = wrap_text(user_sounds_dir(), small_font, COLOR_TEXT_DIM,
+                      LEFT_COL_X, y, LEFT_COL_TEXT_W)
+        y += 2
+        y = wrap_text("(drop .wav or .mp3 files there, then Refresh)",
+                      small_font, COLOR_TEXT_DIM, LEFT_COL_X, y, LEFT_COL_TEXT_W)
+        y += 12
 
-        text("Sound (scroll & click)", body_font, COLOR_TEXT_DIM, 60, 304)
+        slider("Width", "width", y, *WIDTH_RANGE, suffix=" px")
+        y += 32
+        slider("Height", "height", y, *HEIGHT_RANGE, suffix=" px")
+        y += 32
+        slider("Rotation", "rotation", y, *ROTATION_RANGE, suffix=" deg")
+        y += 32
+        slider("Speed", "speed", y, *SPEED_RANGE, suffix=" px/s")
+        y += 32
+        motion_idx = spinner("Motion", MOTIONS, motion_idx, y, x0=LEFT_COL_X)
+        y += 40
+
+        text("Sound (scroll & click)", body_font, COLOR_TEXT_DIM, LEFT_COL_X, y)
+        y += 22
+        list_h = min(120, max(80, 598 - y - 88))  # room for Add + Refresh below
         sound_idx, sound_scroll = sound_list(
-            pygame.Rect(60, 326, 384, 132), sound_names, sound_idx, sound_scroll)
+            pygame.Rect(LEFT_COL_X, y, 384, list_h), sound_names, sound_idx,
+            sound_scroll)
+        y += list_h + 8
 
-        if button(pygame.Rect(60, 464, 388, 40), "Add this zone", accent=True):
+        if button(pygame.Rect(LEFT_COL_X, y, 388, 40), "Add this zone", accent=True):
             specs.append(ZoneSpec(
                 width=round(vals["width"]),
                 height=round(vals["height"]),
@@ -207,13 +245,9 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
                 motion=MOTIONS[motion_idx],
                 sound=sound_names[sound_idx],
             ))
-
-        if button(pygame.Rect(60, 512, 180, 30), "Refresh sounds"):
+        y += 46
+        if button(pygame.Rect(LEFT_COL_X, y, 180, 30), "Refresh sounds"):
             catalog.refresh()
-        text(f"Sounds folder: {user_sounds_dir()}", small_font,
-             COLOR_TEXT_DIM, 60, 550)
-        text("(drop .wav or .mp3 files there, then Refresh)", small_font,
-             COLOR_TEXT_DIM, 60, 568)
 
         # Right panel: listener size + the list of added zones
         text("Listener hearing range", head_font, COLOR_ACCENT, 560, 108)

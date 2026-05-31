@@ -14,7 +14,7 @@ import sys
 import pygame
 
 from game.audio_engine import AudioEngine
-from game.config import (COLOR_BG, COLOR_GRID, COLOR_TEXT, COLOR_TEXT_DIM, FPS,
+from game.config import (COLOR_BG, COLOR_TEXT, COLOR_TEXT_DIM, FPS,
                          SCREEN_HEIGHT, SCREEN_WIDTH, WINDOW_TITLE)
 from game.hrtf import BinauralHRTF
 from game.menu import MenuResult, run_menu
@@ -110,14 +110,8 @@ def run_game(screen, clock, fonts, engine, catalog, result: MenuResult) -> str:
 def _render_game(screen, fonts, player, zones) -> None:
     screen.fill(COLOR_BG)
 
-    step = 50
-    for x in range(0, SCREEN_WIDTH, step):
-        pygame.draw.line(screen, COLOR_GRID, (x, 0), (x, SCREEN_HEIGHT))
-    for y in range(0, SCREEN_HEIGHT, step):
-        pygame.draw.line(screen, COLOR_GRID, (0, y), (SCREEN_WIDTH, y))
-
     for zone in zones:
-        zone.draw(screen, fonts["small"])
+        zone.draw(screen)
 
     player.draw(screen)
 
@@ -128,8 +122,8 @@ def _render_game(screen, fonts, player, zones) -> None:
         "Headphones required - each zone is binauralised to its direction. "
         "Esc: back to menu", True, COLOR_TEXT_DIM), (12, 36))
 
-    active = [z.label for z in zones if z.active]
-    status = "Hearing: " + (", ".join(active) if active else "-")
+    n_active = sum(1 for z in zones if z.active)
+    status = "Hearing: " + (f"{n_active} zone(s)" if n_active else "-")
     screen.blit(body.render(status, True, COLOR_TEXT), (12, SCREEN_HEIGHT - 28))
 
 

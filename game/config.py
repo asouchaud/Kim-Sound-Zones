@@ -46,20 +46,19 @@ USER_SOUNDS_DIRNAME = "sounds"
 # ----------------------------------------------------------------------------
 # Colours (R, G, B)
 # ----------------------------------------------------------------------------
-COLOR_BG = (18, 18, 24)
-COLOR_GRID = (32, 34, 44)
-COLOR_PLAYER = (240, 240, 245)
-COLOR_TEXT = (200, 205, 215)
-COLOR_TEXT_DIM = (120, 125, 135)
-COLOR_ZONE_ACTIVE = (90, 200, 160)
-COLOR_ZONE_IDLE = (70, 90, 130)
-COLOR_LISTENER = (235, 200, 120)
+COLOR_BG = (248, 246, 242)  # off-white
+COLOR_PLAYER = (45, 50, 62)
+COLOR_TEXT = (40, 44, 52)
+COLOR_TEXT_DIM = (100, 105, 115)
+COLOR_ZONE_OUTLINE = (130, 130, 130)
+COLOR_LISTENER = (210, 145, 55)
+COLOR_LISTENER_OUTLINE = (130, 130, 130)
 
 # Menu colours
-COLOR_PANEL = (28, 30, 40)
-COLOR_BUTTON = (52, 58, 78)
-COLOR_BUTTON_HOVER = (74, 84, 112)
-COLOR_BUTTON_TEXT = (235, 238, 245)
+COLOR_PANEL = (235, 233, 228)
+COLOR_BUTTON = (220, 218, 212)
+COLOR_BUTTON_HOVER = (200, 198, 192)
+COLOR_BUTTON_TEXT = (40, 44, 52)
 COLOR_ACCENT = (90, 200, 160)
 
 
