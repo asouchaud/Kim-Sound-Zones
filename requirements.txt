@@ -1,0 +1,7 @@
+pygame>=2.5
+numpy>=1.24
+scipy>=1.10
+sounddevice>=0.4.6
+slab>=1.8.0
+h5netcdf>=1.1
+pyinstaller>=6.0
