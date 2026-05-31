@@ -30,6 +30,22 @@ def regular_polygon(n_sides: int, radius: float) -> list[tuple[float, float]]:
     ]
 
 
+def _point_segment_distance(px: float, py: float,
+                            a: tuple[float, float],
+                            b: tuple[float, float]) -> float:
+    """Shortest distance from point (px, py) to the segment a-b."""
+    ax, ay = a
+    bx, by = b
+    dx, dy = bx - ax, by - ay
+    seg_len2 = dx * dx + dy * dy
+    if seg_len2 == 0.0:
+        return math.hypot(px - ax, py - ay)
+    t = ((px - ax) * dx + (py - ay) * dy) / seg_len2
+    t = max(0.0, min(1.0, t))
+    cx, cy = ax + t * dx, ay + t * dy
+    return math.hypot(px - cx, py - cy)
+
+
 class SoundZone:
     def __init__(self, zone_id: int, sound: np.ndarray, shape: str = "circle",
                  trajectory: Trajectory | None = None, *,
@@ -107,6 +123,44 @@ class SoundZone:
         dist = math.hypot(point[0] - self.x, point[1] - self.y)
         eff = max(1.0, self._bounding_radius())
         return max(0.3, 1.0 - 0.7 * (dist / eff))
+
+    def distance_to_point(self, point: tuple[float, float]) -> float:
+        """Shortest distance from ``point`` to this shape (0 if inside)."""
+        px, py = point
+        if self.contains(point):
+            return 0.0
+        if self.shape == "circle":
+            return math.hypot(px - self.x, py - self.y) - self.radius
+        if self.shape == "rect":
+            dx = max(abs(px - self.x) - self.width / 2, 0.0)
+            dy = max(abs(py - self.y) - self.height / 2, 0.0)
+            return math.hypot(dx, dy)
+        # polygon: minimum distance to any edge
+        verts = [(self.x + dx, self.y + dy) for dx, dy in self.polygon]
+        best = float("inf")
+        n = len(verts)
+        for i in range(n):
+            best = min(best, _point_segment_distance(
+                px, py, verts[i], verts[(i + 1) % n]))
+        return best
+
+    def intersects_circle(self, point: tuple[float, float], radius: float) -> bool:
+        """True if a circle of ``radius`` centred on ``point`` overlaps this zone."""
+        return self.distance_to_point(point) <= radius
+
+    def gain_for_listener(self, point: tuple[float, float], radius: float) -> float:
+        """Loudness when heard via a listener circle of ``radius``.
+
+        Returns 0 when the listener circle does not overlap the zone. Otherwise
+        ramps from a quiet floor at first contact up to full volume as the
+        listener reaches the zone's centre.
+        """
+        if not self.intersects_circle(point, radius):
+            return 0.0
+        dist = math.hypot(point[0] - self.x, point[1] - self.y)
+        contact = max(1.0, radius + self._bounding_radius())
+        closeness = max(0.0, min(1.0, 1.0 - dist / contact))
+        return 0.3 + 0.7 * closeness
 
     def azimuth_to(self, point: tuple[float, float]) -> float:
         """Game azimuth (deg) of this zone's centre as seen from ``point``.

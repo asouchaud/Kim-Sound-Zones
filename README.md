@@ -9,14 +9,32 @@ from the direction of the zone's centre relative to you.
 > Use headphones. Binaural audio only works over headphones - on speakers the
 > left/right ear cues are lost.
 
+## How to play
+
+1. Launch the game. You start on a **setup menu**.
+2. On the left, use the `<` / `>` arrows to choose a zone's **shape, size,
+   speed, motion and sound**, then click **"Add this zone"**. Add as many as you
+   like - they appear in the list on the right.
+3. Set the **listener hearing range** (how big your hearing circle is).
+4. Click **Start**.
+5. Move the cross with **WASD / arrow keys**. When your hearing circle overlaps
+   a zone you hear its sound, coming from the zone's direction and getting louder
+   as you get closer. Press **Esc** to return to the menu.
+
+> Use headphones. Binaural audio only works over headphones - on speakers the
+> left/right ear cues are lost.
+
 ## How it works
 
-- **Player** (`game/player.py`): a cross with a fixed "up" heading. Move with
-  `WASD` or the arrow keys; `Esc` quits.
-- **Sound zones** (`game/sound_zone.py`): each has a shape (circle, rectangle,
-  or polygon), a size, a mono sound, and a movement `Trajectory`
-  (`game/trajectories.py`: static, bouncing, circular, random walk). The sound
-  gets louder as you move toward the centre.
+- **Player** (`game/player.py`): a cross with a fixed "up" heading and a
+  *listener zone* (a circle around it). A sound plays only while its zone
+  overlaps this circle.
+- **Sound zones** (`game/sound_zone.py`): each has a shape (circle, square,
+  triangle, hexagon), a size, a mono sound, and a movement `Trajectory`
+  (`game/trajectories.py`: static, bouncing, circular, wander).
+- **Setup** (`game/setup.py`, `game/menu.py`): the menu produces simple
+  `ZoneSpec` descriptions; `build_zone_from_spec` turns them into live zones,
+  and `SoundCatalog` lists the built-in sounds plus your own `.wav` files.
 - **HRTF** (`game/hrtf.py`): loads the in-built KEMAR HRTF from `slab`, keeps the
   horizontal-plane impulse responses, and looks up the nearest azimuth. Game
   azimuth is `0` straight ahead, positive to your right.
@@ -37,19 +55,14 @@ dataset is read.
 
 ## Using your own sounds
 
-Placeholder sounds (tones, pink noise, a chirp) are generated in code so the
-game works out of the box. To use your own audio, load a `.wav` file and pass it
-to a `SoundZone` in `build_zones()` inside `main.py`:
+Built-in sounds (tones, pink noise, a chirp) are always available. To add your
+own, just drop `.wav` files into the **`sounds/`** folder next to the game (the
+folder contains a `HOW_TO_ADD_SOUNDS.txt` reminder). On the menu, click
+**"Refresh sounds"** (or restart) and your files appear in the **Sound** option,
+listed by their file name.
 
-```python
-from game import sounds
-my_sound = sounds.load_wav("assets/sounds/my_clip.wav")
-SoundZone(4, my_sound, shape="circle", radius=100, label="my clip")
-```
-
-`load_wav` converts to mono and resamples to the engine's 44.1 kHz rate. Stereo
-files are averaged to mono. Drop files in `assets/sounds/` so they get bundled
-into the executable.
+`.wav` is the supported format. Stereo files are mixed to mono and any sample
+rate is converted automatically to the engine's 44.1 kHz.
 
 ## Building a standalone executable
 
@@ -77,16 +90,18 @@ Produces `dist/BinauralSoundZones.app` (launch with `open dist/BinauralSoundZone
 ## Project layout
 
 ```
-main.py                 Entry point and game loop
+main.py                 Entry point: menu -> game loop
 game/
-  config.py             Constants + resource_path() for bundled data
-  player.py             Player (the cross)
+  config.py             Constants, mappings + paths (resource/user dirs)
+  player.py             Player (the cross) + listener hearing circle
   trajectories.py       Zone movement patterns
-  sound_zone.py         SoundZone shapes, geometry, looping playback
-  sounds.py             Placeholder sound generators + load_wav()
+  sound_zone.py         SoundZone shapes, geometry, intersection, playback
+  sounds.py             Sound generators, load_wav(), list_user_wavs()
+  setup.py              ZoneSpec, SoundCatalog, build_zone_from_spec
+  menu.py               Mouse-driven setup screen
   hrtf.py               KEMAR HRTF loading + nearest-azimuth lookup
   audio_engine.py       Real-time binaural mixer (sounddevice)
-assets/sounds/          Drop your own .wav files here
+sounds/                 Drop your own .wav files here
 yebin.spec              PyInstaller build spec
 build_windows.bat       Windows build helper
 build_macos.sh          macOS build helper

@@ -29,9 +29,10 @@ for pkg in ("slab", "h5netcdf", "h5py"):
 
 hiddenimports += ["sounddevice", "soundfile", "cffi", "_cffi_backend"]
 
-# Optional user assets (created lazily; only add if present).
-if os.path.isdir("assets"):
-    datas.append(("assets", "assets"))
+# Ship the "sounds" folder (with its how-to note) next to the executable so the
+# user has an obvious place to drop their own .wav files.
+if os.path.isdir("sounds"):
+    datas.append(("sounds", "sounds"))
 
 # slab imports matplotlib at import time, so matplotlib must stay - but we never
 # plot, so exclude every GUI toolkit (matplotlib falls back to the headless Agg

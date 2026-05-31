@@ -1,0 +1,19 @@
+HOW TO ADD YOUR OWN SOUNDS
+==========================
+
+1. Put any .wav files you like into THIS folder ("sounds").
+   Example: birds.wav, music.wav, voice.wav
+
+2. Start the game (or, if it is already open on the setup screen,
+   click the "Refresh sounds" button).
+
+3. Your file will appear in the "Sound" option when you build a zone -
+   it is shown using the file name (so "birds.wav" appears as "birds").
+
+Tips
+----
+- .wav files work best. (Other formats like .mp3 are not supported.)
+- Stereo files are automatically mixed down to mono.
+- Any sample rate is fine; the game converts it automatically.
+- Short clips that loop nicely sound best, but anything will work -
+  the game loops the sound while you are inside the zone.

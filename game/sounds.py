@@ -10,6 +10,9 @@ Placeholder generators (tone / pink noise / chirp) work out of the box; the
 """
 from __future__ import annotations
 
+import glob
+import os
+
 import numpy as np
 from scipy import signal
 from scipy.io import wavfile
@@ -93,3 +96,18 @@ def load_wav(path: str, sr: int = SAMPLE_RATE) -> np.ndarray:
         data = signal.resample(data, n_out)
 
     return _normalize(data, peak=0.95)
+
+
+def list_user_wavs(folder: str) -> list[tuple[str, str]]:
+    """Return ``(display_name, full_path)`` for every .wav file in ``folder``.
+
+    Sorted alphabetically. The display name is the file name without the
+    extension, so a non-technical user just sees e.g. "birds" for "birds.wav".
+    """
+    if not folder or not os.path.isdir(folder):
+        return []
+    results = []
+    for path in sorted(glob.glob(os.path.join(folder, "*.wav"))):
+        name = os.path.splitext(os.path.basename(path))[0]
+        results.append((name, path))
+    return results

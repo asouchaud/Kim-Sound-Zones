@@ -53,6 +53,11 @@ class AudioEngine:
         with self._lock:
             self._zones.append(zone)
 
+    def clear(self) -> None:
+        """Remove all zones (used when returning to the menu)."""
+        with self._lock:
+            self._zones = []
+
     def update_zone(self, zone: SoundZone, active: bool,
                     azimuth: float, gain: float) -> None:
         with self._lock:
