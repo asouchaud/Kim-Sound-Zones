@@ -68,6 +68,11 @@ class Circular(Trajectory):
                          cy + radius * math.sin(phase))
 
     def update(self, dt: float, bounds: tuple[int, int]) -> tuple[float, float]:
+        w, h = bounds
+        # Recentre and scale the orbit when the window size changes.
+        self.cx = w * 0.5
+        self.cy = h * 0.5
+        self.radius = min(w, h) * 0.32
         self.angle += self.angular_speed * dt
         self.x = self.cx + self.radius * math.cos(self.angle)
         self.y = self.cy + self.radius * math.sin(self.angle)

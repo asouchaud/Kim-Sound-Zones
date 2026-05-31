@@ -14,8 +14,10 @@ import sys
 import pygame
 
 from game.audio_engine import AudioEngine
+from game import config
 from game.config import (COLOR_BG, COLOR_TEXT, COLOR_TEXT_DIM, FPS,
-                         SCREEN_HEIGHT, SCREEN_WIDTH, WINDOW_TITLE)
+                         START_MAXIMIZED)
+from game.display import Display
 from game.hrtf import BinauralHRTF
 from game.menu import MenuResult, run_menu
 from game.player import Player
@@ -33,16 +35,16 @@ def _make_fonts() -> dict:
 
 def main() -> None:
     pygame.init()
-    pygame.display.set_caption(WINDOW_TITLE)
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    display = Display(start_maximized=START_MAXIMIZED)
+    screen = display.create()
     clock = pygame.time.Clock()
     fonts = _make_fonts()
 
     # Loading screen while the (somewhat slow) HRTF dataset is read.
     screen.fill(COLOR_BG)
     msg = fonts["head"].render("Loading HRTF data...", True, COLOR_TEXT)
-    screen.blit(msg, (SCREEN_WIDTH // 2 - msg.get_width() // 2,
-                      SCREEN_HEIGHT // 2 - msg.get_height() // 2))
+    screen.blit(msg, (config.SCREEN_WIDTH // 2 - msg.get_width() // 2,
+                      config.SCREEN_HEIGHT // 2 - msg.get_height() // 2))
     pygame.display.flip()
 
     hrtf = BinauralHRTF()
@@ -56,22 +58,25 @@ def main() -> None:
 
     try:
         while True:
-            result = run_menu(screen, clock, fonts, catalog)
+            result = run_menu(display, clock, fonts, catalog)
             if result is None:
                 break
-            if run_game(screen, clock, fonts, engine, catalog, result) == "quit":
+            screen = display.screen
+            if run_game(display, clock, fonts, engine, catalog, result) == "quit":
                 break
     finally:
         engine.stop()
         pygame.quit()
 
 
-def run_game(screen, clock, fonts, engine, catalog, result: MenuResult) -> str:
+def run_game(display, clock, fonts, engine, catalog, result: MenuResult) -> str:
     """Play one session. Returns "menu" (Esc) or "quit" (window closed)."""
     engine.clear()
-    bounds = (SCREEN_WIDTH, SCREEN_HEIGHT)
+    screen = display.screen
+    w, h = config.SCREEN_WIDTH, config.SCREEN_HEIGHT
+    bounds = (w, h)
 
-    player = Player(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2,
+    player = Player(w // 2, h // 2,
                     listener_radius=result.listener_radius)
     zones = []
     for i, spec in enumerate(result.specs):
@@ -83,18 +88,28 @@ def run_game(screen, clock, fonts, engine, catalog, result: MenuResult) -> str:
     while running:
         dt = clock.tick(FPS) / 1000.0
 
+        screen = display.screen
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 engine.clear()
                 return "quit"
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+                elif event.key == pygame.K_F11:
+                    display.toggle()
+                    screen = display.screen
+                    bounds = (config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
+            elif event.type == pygame.VIDEORESIZE:
+                display.handle_resize(event)
+                screen = display.screen
+                bounds = (config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
 
         keys = pygame.key.get_pressed()
         player.handle_input(keys, dt)
 
         for zone in zones:
-            zone.update(dt, bounds)
+            zone.update(dt, (config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
             active = zone.intersects_circle(player.pos, player.listener_radius)
             gain = zone.gain_for_listener(player.pos, player.listener_radius)
             azimuth = zone.azimuth_to(player.pos)
@@ -119,12 +134,13 @@ def _render_game(screen, fonts, player, zones) -> None:
     small = fonts["small"]
     screen.blit(body.render("Move: WASD / Arrows", True, COLOR_TEXT), (12, 10))
     screen.blit(small.render(
-        "Headphones required - each zone is binauralised to its direction. "
-        "Esc: back to menu", True, COLOR_TEXT_DIM), (12, 36))
+        "Headphones required. Esc: menu  |  F11: window / maximized",
+        True, COLOR_TEXT_DIM), (12, 36))
 
     n_active = sum(1 for z in zones if z.active)
     status = "Hearing: " + (f"{n_active} zone(s)" if n_active else "-")
-    screen.blit(body.render(status, True, COLOR_TEXT), (12, SCREEN_HEIGHT - 28))
+    screen.blit(body.render(status, True, COLOR_TEXT),
+                (12, config.SCREEN_HEIGHT - 28))
 
 
 if __name__ == "__main__":

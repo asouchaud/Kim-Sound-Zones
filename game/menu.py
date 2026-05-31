@@ -19,10 +19,10 @@ from dataclasses import dataclass
 
 import pygame
 
+from . import config
 from .config import (COLOR_ACCENT, COLOR_BG, COLOR_BUTTON, COLOR_BUTTON_HOVER,
                      COLOR_BUTTON_TEXT, COLOR_PANEL, COLOR_TEXT, COLOR_TEXT_DIM,
-                     FPS, LISTENER_RADIUS, SCREEN_HEIGHT, SCREEN_WIDTH,
-                     user_sounds_dir)
+                     FPS, LISTENER_RADIUS, user_sounds_dir)
 from .setup import (HEIGHT_RANGE, MOTIONS, ROTATION_RANGE, SPEED_RANGE,
                      WIDTH_RANGE, SoundCatalog, ZoneSpec)
 
@@ -38,7 +38,7 @@ class MenuResult:
     listener_radius: float
 
 
-def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
+def run_menu(display, clock: pygame.time.Clock,
              fonts: dict, catalog: SoundCatalog) -> MenuResult | None:
     title_font = fonts["title"]
     head_font = fonts["head"]
@@ -55,18 +55,24 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
 
     running = True
     while running:
+        screen = display.screen
         clicks: list[tuple[int, int]] = []
         wheel = 0
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return None
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                return None
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return None
+                if event.key == pygame.K_F11:
+                    display.toggle()
+            elif event.type == pygame.VIDEORESIZE:
+                display.handle_resize(event)
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 clicks.append(event.pos)
-            if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 drag["slider"] = None
-            if event.type == pygame.MOUSEWHEEL:
+            elif event.type == pygame.MOUSEWHEEL:
                 wheel += event.y
         mouse = pygame.mouse.get_pos()
         pressed = pygame.mouse.get_pressed()[0]
@@ -196,10 +202,11 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
         pygame.draw.rect(screen, COLOR_PANEL, left_panel, border_radius=12)
         pygame.draw.rect(screen, COLOR_PANEL, right_panel, border_radius=12)
 
-        text("Binaural Sound Zones", title_font, COLOR_TEXT, SCREEN_WIDTH // 2, 32,
-             center=True)
+        text("Binaural Sound Zones", title_font, COLOR_TEXT,
+             config.SCREEN_WIDTH // 2, 32, center=True)
         text("Build your world, then press Start. Use headphones!",
-             small_font, COLOR_TEXT_DIM, SCREEN_WIDTH // 2, 66, center=True)
+             small_font, COLOR_TEXT_DIM, config.SCREEN_WIDTH // 2, 66,
+             center=True)
 
         # Left panel (first column): folder info, then zone controls
         text("Create a sound zone (oval)", head_font, COLOR_ACCENT, LEFT_COL_X, 106)
@@ -230,7 +237,7 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
 
         text("Sound (scroll & click)", body_font, COLOR_TEXT_DIM, LEFT_COL_X, y)
         y += 22
-        list_h = min(120, max(80, 598 - y - 88))  # room for Add + Refresh below
+        list_h = min(120, max(80, config.SCREEN_HEIGHT - 98 - y))
         sound_idx, sound_scroll = sound_list(
             pygame.Rect(LEFT_COL_X, y, 384, list_h), sound_names, sound_idx,
             sound_scroll)
@@ -276,7 +283,8 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
 
         # Start
         start_enabled = len(specs) > 0
-        if button(pygame.Rect(SCREEN_WIDTH // 2 - 130, 648, 260, 44),
+        start_y = config.SCREEN_HEIGHT - 56
+        if button(pygame.Rect(config.SCREEN_WIDTH // 2 - 130, start_y, 260, 44),
                   "Start", enabled=start_enabled, accent=True, font=head_font):
             return MenuResult(
                 specs=list(specs),
@@ -284,7 +292,8 @@ def run_menu(screen: pygame.Surface, clock: pygame.time.Clock,
             )
         if not start_enabled:
             text("Add at least one zone to start", small_font, COLOR_TEXT_DIM,
-                 SCREEN_WIDTH // 2, 700 - 14, center=True)
+                 config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT - 24,
+                 center=True)
 
         pygame.display.flip()
         clock.tick(FPS)

@@ -5,8 +5,9 @@ import math
 
 import pygame
 
+from . import config
 from .config import (COLOR_LISTENER, COLOR_LISTENER_OUTLINE, COLOR_PLAYER,
-                     PLAYER_SIZE, PLAYER_SPEED, SCREEN_HEIGHT, SCREEN_WIDTH)
+                     PLAYER_SIZE, PLAYER_SPEED)
 
 
 def _draw_dashed_circle(surface: pygame.Surface, cx: int, cy: int, radius: int,
@@ -71,8 +72,9 @@ class Player:
             self._clamp_to_screen()
 
     def _clamp_to_screen(self) -> None:
-        self.x = max(PLAYER_SIZE, min(SCREEN_WIDTH - PLAYER_SIZE, self.x))
-        self.y = max(PLAYER_SIZE, min(SCREEN_HEIGHT - PLAYER_SIZE, self.y))
+        w, h = config.SCREEN_WIDTH, config.SCREEN_HEIGHT
+        self.x = max(PLAYER_SIZE, min(w - PLAYER_SIZE, self.x))
+        self.y = max(PLAYER_SIZE, min(h - PLAYER_SIZE, self.y))
 
     def draw(self, surface: pygame.Surface) -> None:
         cx, cy = int(self.x), int(self.y)

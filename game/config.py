@@ -12,10 +12,15 @@ import sys
 # ----------------------------------------------------------------------------
 # Display / game loop
 # ----------------------------------------------------------------------------
+# Updated when the window is created or resized. Read via ``config.SCREEN_WIDTH``
+# (do not ``from config import SCREEN_WIDTH`` — that freezes the initial value).
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 700
 FPS = 60
 WINDOW_TITLE = "Binaural Sound Zones"
+# If True, the game opens using your monitor's resolution (maximized).
+# Press F11 to switch to a smaller window, and again to go back.
+START_MAXIMIZED = True
 
 # ----------------------------------------------------------------------------
 # Audio engine
